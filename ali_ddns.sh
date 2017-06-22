@@ -1,5 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #By h46incon
+
+declare -A DomainRecordIdMap=(
+  ["*.mac"]=""
+)
+
+DomainRR=$1
+# DomainRR="*.mac"
+DomainRecordId=${DomainRecordIdMap[$DomainRR]}
+# DomainRecordId="3427843267334144"
 
 #Dependences: bind-dig, curl, openssl-util, sort(probably implemented by bash or other shell)
 
@@ -12,17 +21,17 @@ _ERR_="1"
 
 
 ## ----- Setting -----
-AccessKeyId="testid"
-AccessKeySec="testsecret"
-DomainRecordId="00000"
+AccessKeyId=""
+AccessKeySec=""
 # DomainRR, use "@" to set top level domain
-DomainRR="www"
-DomainName="example.com"
+# DomainRR="*.xiaomi"
+DomainName="wuweixing.com"
 DomainType="A"
 # DNS Server for check current IP of the record
 # Perferred setting is your domain name service provider
 # Leave it blank if using the default DNS Server
-DNSServer="dns9.hichina.com"
+# DNSServer="vip1.alidns.com"
+DNSServer="8.8.8.8"
 
 # The server address of ALi API
 ALiServerAddr="alidns.aliyuncs.com"
@@ -110,7 +119,6 @@ pack_params()
 		key_enc=${_func_ret}
 		rawurl_encode "${params[${key}]}"
 		val_enc=${_func_ret}
-		
 		ret+="${key_enc}""=""${val_enc}""&"
 	done
 
@@ -119,12 +127,14 @@ pack_params()
 }
 
 
-# ----- Other utils ----- 
+# ----- Other utils -----
 
 get_my_ip()
 {
 	reset_func_ret
-	local my_ip=$(curl ${MyIPEchoUrl} --silent --connect-timeout 10)
+	# local my_ip=$(curl ${MyIPEchoUrl} --silent --connect-timeout 10)
+	# local my_ip=$(ipconfig getifaddr en0)
+  local my_ip=$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
 
 	#echo ${my_ip}
 	_func_ret=${my_ip}
@@ -134,14 +144,14 @@ get_domain_ip()
 {
 	reset_func_ret
 	local full_domain=""
-	if [ -z "${DomainRR}" ] || [ "${DomainRR}" == "@" ]; then 
+	if [ -z "${DomainRR}" ] || [ "${DomainRR}" == "@" ]; then
 		full_domain=${DomainName}
 	else
 		full_domain=${DomainRR}.${DomainName}
 	fi
 
 	local ns_param=""
-	if [ -z "${DNSServer}" ] ; then 
+	if [ -z "${DNSServer}" ] ; then
 		ns_param=""
 	else
 		ns_param="@""${DNSServer}"
@@ -151,7 +161,7 @@ get_domain_ip()
 }
 
 # @Param1: Raw url to be encoded
-rawurl_encode() 
+rawurl_encode()
 {
 	reset_func_ret
 
@@ -159,7 +169,7 @@ rawurl_encode()
 	local strlen=${#string}
 	local encoded=""
 	local pos c o
-	
+
 	for (( pos=0 ; pos<strlen ; pos++ )); do
 		c=${string:$pos:1}
 		case "$c" in
@@ -168,7 +178,7 @@ rawurl_encode()
 		esac
 		encoded+="${o}"
 	done
-	_func_ret="${encoded}" 
+	_func_ret="${encoded}"
 }
 
 calc_signature()
@@ -178,7 +188,7 @@ calc_signature()
 	# sort keys
 	local sorted_keys=( $(
 		for el in "${!params[@]}"
-		do 
+		do
 			echo "$el"
 		done | LC_COLLATE=C sort
 	) )
@@ -199,7 +209,7 @@ calc_signature()
 	done
 	# delete last "&"
 	query_str=${query_str%"&"}
-	
+
 	_debug Query String: ${query_str}
 	# encode
 	rawurl_encode "${query_str}"
@@ -255,25 +265,27 @@ update_record()
 
 	if [ "${my_ip}" == "${domain_ip}" ]; then
 		_log Need not to update, current IP: ${my_ip}
-		exit
+		# exit
+  else
+	  # init params
+	  put_params_public
+	  put_params_UpdateDomainRecord ${my_ip}
+
+	  send_request
 	fi
-
-	# init params
-	put_params_public
-	put_params_UpdateDomainRecord ${my_ip}
-
-	send_request
 }
 
 
 main()
 {
+	_debug DomainRR: ${DomainRR}
+	_debug DomainRecordId: ${DomainRecordId}
 	#describe_record
 	update_record
 }
 
-
-main
-
-
-
+while true
+do
+  main
+  sleep 300
+done
