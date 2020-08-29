@@ -51,9 +51,9 @@ _func_ret=""
 
 
 ## ----- Base Util -----
-_debug()	{ ${_DEBUG_} && echo $(date) "> $*"; }
-_log() 		{ ${_LOG_}   && echo $(date) "* $*"; }
-_err() 		{ ${_ERR_}   && echo $(date) "! $*"; }
+_debug()	{ ${_DEBUG_} && echo "> $*"; }
+_log() 		{ ${_LOG_}   && echo "* $*"; }
+_err() 		{ ${_ERR_}   && echo "! $*"; }
 
 reset_func_ret()
 {
