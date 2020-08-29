@@ -1,32 +1,45 @@
-#!/bin/sh
-#By h46incon
+#!/usr/bin/env bash
+#By h46incon, wuweixing
 
 #Dependences: curl, openssl-util, tr, sort
 
+DomainRR=$1
+# DomainRR="*.mac"
+DomainRecordId=${DomainRecordId}
+# DomainRecordId="3427843267334144"
+
+#Dependences: bind-dig, curl, openssl-util, sort(probably implemented by bash or other shell)
+
+## ===== public =====
+
+## ----- Log level -----
+_DEBUG_=false
+_LOG_=true
+_ERR_=true
+
 ## ----- Setting -----
-AccessKeyId="testid"
-AccessKeySec="testsecret"
-DomainRecordId="00000"
+CHECK_INTERVAL=30
+AccessKeyId=${MY_ALIYUN_KEY}
+AccessKeySec=${MY_ALIYUN_SECRET}
 # DomainRR, use "@" to set top level domain
-DomainRR="www"
-DomainName="example.com"
+# DomainRR="*.xiaomi"
+DomainName=${MY_DOMAIN}
 DomainType="A"
+# DNS Server for check current IP of the record
+# Perferred setting is your domain name service provider
+# Leave it blank if using the default DNS Server
+# DNSServer="vip1.alidns.com"
 
 # The server address of ALi API
 ALiServerAddr="alidns.aliyuncs.com"
 # A url provided by a third-party to echo the public IP of host
-MyIPEchoUrl="http://members.3322.org/dyndns/getip"
+MyIPEchoUrl="http://whatismyip.akamai.com/"
+# MyIPEchoUrl="http://ipv6.whatismyip.akamai.com/"
 # MyIPEchoUrl="http://icanhazip.com"
 
 # the generatation a random number can be modified here
 #((rand_num=${RANDOM} * ${RANDOM} * ${RANDOM}))
-rand_num=$(openssl rand -hex 16)
-
-## ----- Log level -----
-_DEBUG_=true
-_LOG_=true
-_ERR_=true
-
+# rand_num=$(openssl rand -hex 16)
 
 ## ===== private =====
 
@@ -38,9 +51,9 @@ _func_ret=""
 
 
 ## ----- Base Util -----
-_debug()	{ ${_DEBUG_} && echo "> $*"; }
-_log() 		{ ${_LOG_}   && echo "* $*"; }
-_err() 		{ ${_ERR_}   && echo "! $*"; }
+_debug()	{ ${_DEBUG_} && echo $(date) "> $*"; }
+_log() 		{ ${_LOG_}   && echo $(date) "* $*"; }
+_err() 		{ ${_ERR_}   && echo $(date) "! $*"; }
 
 reset_func_ret()
 {
@@ -70,6 +83,7 @@ put_params_public()
 	put_param "AccessKeyId" "${AccessKeyId}"
 	put_param "SignatureMethod" "HMAC-SHA1"
 	put_param "SignatureVersion" "1.0"
+  rand_num=$(openssl rand -hex 16)
 
 	# time stamp
 	local time_utc=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -103,6 +117,14 @@ put_params_DescribeDomainRecordInfo()
 	put_param "RecordId" "${DomainRecordId}"
 }
 
+put_params_DescribeDomainRecordInfo()
+{
+	put_param "Action" "DescribeDomainRecords"
+	put_param "DomainName" "${DomainName}"
+	put_param "RRKeyWord" "${DomainRR}"
+	put_param "Type" "${DomainType}"
+}
+
 pack_params()
 {
 	reset_func_ret
@@ -129,10 +151,13 @@ pack_params()
 
 
 # ----- Other utils -----
+
 get_my_ip()
 {
 	reset_func_ret
 	local my_ip=$(curl ${MyIPEchoUrl} --silent --connect-timeout 10)
+	# local my_ip=$(ipconfig getifaddr en0)
+  # local my_ip=$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
 
 	#echo ${my_ip}
 	_func_ret=${my_ip}
@@ -148,10 +173,12 @@ get_domain_ip()
 	reset_func_ret
 
 	_func_ret=$(echo ${result} |grep -Eo '"Value":"[0-9a-f:.]+"' |grep -Eo '[0-9a-f:.]{5,}')
+	DomainRecordId=$(echo ${result} |grep -Eo '"RecordId":"[0-9]+"' |grep -Eo '[0-9]{5,}')
+  _debug DomainRecordId: ${DomainRecordId}
 }
 
 # @Param1: Raw url to be encoded
-rawurl_encode() 
+rawurl_encode()
 {
 	reset_func_ret
 
@@ -171,7 +198,7 @@ rawurl_encode()
 		encoded="${encoded}${o}"
 		pos=$(($pos + 1))
 	done
-	_func_ret="${encoded}" 
+	_func_ret="${encoded}"
 }
 
 calc_signature()
@@ -202,7 +229,8 @@ calc_signature()
 		query_str="${query_str}${key_enc}=${val_enc}&"
 	done
 
-	query_str=${query_str%'&'}
+	# delete last "&"
+	query_str=${query_str%"&"}
 
 	_debug Query String: ${query_str}
 	# encode
@@ -231,7 +259,7 @@ send_request()
 	_debug Request addr: ${req_url}
 
 	local respond=$(curl -3 ${req_url} --silent --connect-timeout 10 -w "HttpCode:%{http_code}")
-	echo ${respond}
+	_debug ${respond}
 	_func_ret=${respond}
 }
 
@@ -262,20 +290,26 @@ update_record()
 
 	if [ "${my_ip}" == "${domain_ip}" ]; then
 		_log Need not to update, current IP: ${my_ip}
-		exit
+		# exit
+  else
+	  # init params
+	  put_params_public
+	  put_params_UpdateDomainRecord ${my_ip}
+
+	  send_request
 	fi
-
-	# init params
-	put_params_public
-	put_params_UpdateDomainRecord ${my_ip}
-
-	send_request
 }
 
 main()
 {
-	describe_record
-	#update_record
+	_debug DomainName: ${DomainName}
+	_debug DomainRR: ${DomainRR}
+	#describe_record
+	update_record
 }
 
-main
+while true
+do
+  main
+  sleep ${CHECK_INTERVAL}
+done

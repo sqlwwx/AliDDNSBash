@@ -1,0 +1,9 @@
+[{
+  "name"              : "ali_ddns",
+  "script"            : "./ali_ddns.sh",
+  "args"              : "*.ws",
+  "log_date_format"   : "YYYY-MM-DD HH:mm Z",
+  "max_memory_restart": "5M",
+  "exec_interpreter"  : "none",
+  "exec_mode"         : "fork_mode"
+}]
