@@ -51,9 +51,9 @@ _func_ret=""
 
 
 ## ----- Base Util -----
-_debug()	{ ${_DEBUG_} && echo $(date) "DEBUG $*"; }
-_log() 		{ ${_LOG_}   && echo $(date) "INFO $*"; }
-_err() 		{ ${_ERR_}   && echo $(date) "ERROR $*"; }
+_debug()	{ ${_DEBUG_} && echo $(date "+%F %T") "DEBUG $*"; }
+_log() 		{ ${_LOG_}   && echo $(date "+%F %T") "INFO $*"; }
+_err() 		{ ${_ERR_}   && echo $(date "+%F %T") "ERROR $*"; }
 
 reset_func_ret()
 {
@@ -174,7 +174,7 @@ get_domain_ip()
 
 	_func_ret=$(echo ${result} |grep -Eo '"Value":"[0-9a-f:.]+"' |grep -Eo '[0-9a-f:.]{5,}')
 	DomainRecordId=$(echo ${result} |grep -Eo '"RecordId":"[0-9]+"' |grep -Eo '[0-9]{5,}')
-  if [ ${DomainRecordId} == '']; then
+  if [ -z ${DomainRecordId} ]; then
     _err get domain ip failed ${result}
     exit 1
   fi
@@ -306,8 +306,7 @@ update_record()
 
 main()
 {
-	_debug DomainName: ${DomainName}
-	_debug DomainRR: ${DomainRR}
+  _log DomainRR: ${DomainRR} DomainName: ${DomainName}
 	_debug AccessKeyId: ${AccessKeyId}
 	_debug AccessKeySec: ${AccessKeySec}
 	#describe_record
