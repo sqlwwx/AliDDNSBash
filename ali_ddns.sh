@@ -308,8 +308,10 @@ main()
 	update_record
 }
 
-while true
-do
-  main
-  sleep ${CHECK_INTERVAL}
-done
+main
+#
+# while true
+# do
+#   main
+#   sleep ${CHECK_INTERVAL}
+# done
