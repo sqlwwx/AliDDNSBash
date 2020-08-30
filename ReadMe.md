@@ -65,3 +65,10 @@ DNSServer="dns9.hichina.com"
 	}
 ```
   执行脚本即可。脚本会在本机IP地址和当前域名解析设置不同的时候调用API更新设置。
+
+5. 使用环境变量
+
+```
+MY_ALIYUN_KEY=xxx MY_ALIYUN_SECRET=yyy MY_DOMAIN=zzz \
+curl -fsSL https://cdn.jsdelivr.net/gh/sqlwwx/AliDDNSBash/ali_ddns.sh | bash -s '*.ws'
+```
