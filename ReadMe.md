@@ -69,6 +69,6 @@ DNSServer="dns9.hichina.com"
 5. 使用环境变量
 
 ```
-MY_ALIYUN_KEY=xxx MY_ALIYUN_SECRET=yyy MY_DOMAIN=zzz \
+MY_ALIYUN_KEY=xxx MY_ALIYUN_SECRET=yyy DOMAIN=zzz \
 curl -fsSL https://cdn.jsdelivr.net/gh/sqlwwx/AliDDNSBash/ali_ddns.sh | bash -s '*.ws'
 ```

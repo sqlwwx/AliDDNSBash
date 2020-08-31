@@ -2,15 +2,7 @@
 #By h46incon, wuweixing
 
 #Dependences: curl, openssl-util, tr, sort
-
-DomainRR=$1
-# DomainRR="*.mac"
-DomainRecordId=${DomainRecordId}
-# DomainRecordId="3427843267334144"
-
-#Dependences: bind-dig, curl, openssl-util, sort(probably implemented by bash or other shell)
-
-## ===== public =====
+#env: MY_ALIYUN_KEY, MY_ALIYUN_SECRET, DOMAIN, DomainRR
 
 ## ----- Log level -----
 _DEBUG_=false
@@ -18,28 +10,20 @@ _LOG_=true
 _ERR_=true
 
 ## ----- Setting -----
-CHECK_INTERVAL=30
 AccessKeyId=${MY_ALIYUN_KEY}
 AccessKeySec=${MY_ALIYUN_SECRET}
+
 # DomainRR, use "@" to set top level domain
-# DomainRR="*.xiaomi"
-DomainName=${MY_DOMAIN}
+DomainRR=${1:-${DomainRR}}
+DomainName=${DOMAIN}
 DomainType="A"
-# DNS Server for check current IP of the record
-# Perferred setting is your domain name service provider
-# Leave it blank if using the default DNS Server
-# DNSServer="vip1.alidns.com"
+DomainRecordId=""
 
 # The server address of ALi API
 ALiServerAddr="alidns.aliyuncs.com"
 # A url provided by a third-party to echo the public IP of host
 MyIPEchoUrl="http://whatismyip.akamai.com/"
 # MyIPEchoUrl="http://ipv6.whatismyip.akamai.com/"
-# MyIPEchoUrl="http://icanhazip.com"
-
-# the generatation a random number can be modified here
-#((rand_num=${RANDOM} * ${RANDOM} * ${RANDOM}))
-# rand_num=$(openssl rand -hex 16)
 
 ## ===== private =====
 
@@ -55,29 +39,25 @@ _debug()	{ ${_DEBUG_} && echo $(date "+%F %T") "DEBUG $*"; }
 _log() 		{ ${_LOG_}   && echo $(date "+%F %T") "INFO $*"; }
 _err() 		{ ${_ERR_}   && echo $(date "+%F %T") "ERROR $*"; }
 
-reset_func_ret()
-{
+reset_func_ret() {
 	_func_ret=""
 }
 
 ## ----- params -----
 # @Param1: Key
 # @Param2: Value
-put_param()
-{
+put_param() {
 	eval g_pkey_${g_pn}=$1
 	eval g_pval_$1=$2
 	g_pn=$((g_pn + 1))
 }
 
-reset_param()
-{
+reset_param() {
 	g_pn=0
 }
 
 # This function will init all public params EXCLUDE "Signature"
-put_params_public()
-{
+put_params_public() {
 	put_param "Format" "JSON"
 	put_param "Version" "2015-01-09"
 	put_param "AccessKeyId" "${AccessKeyId}"
@@ -96,8 +76,7 @@ put_params_public()
 }
 
 # @Param1: New IP address
-put_params_UpdateDomainRecord()
-{
+put_params_UpdateDomainRecord() {
 	put_param "Action" "UpdateDomainRecord"
 	put_param "RR" "${DomainRR}"
 	put_param "RecordId" "${DomainRecordId}"
@@ -105,28 +84,19 @@ put_params_UpdateDomainRecord()
 	put_param "Value" "${1}"
 }
 
-put_params_DescribeDomainRecords()
-{
-	put_param "Action" "DescribeDomainRecords"
-	put_param "DomainName" ${DomainName}
-}
-
-put_params_DescribeDomainRecordInfo()
-{
+put_params_DescribeDomainRecordInfo() {
 	put_param "Action" "DescribeDomainRecordInfo"
 	put_param "RecordId" "${DomainRecordId}"
 }
 
-put_params_DescribeDomainRecordInfo()
-{
+put_params_DescribeDomainRecordInfo() {
 	put_param "Action" "DescribeDomainRecords"
 	put_param "DomainName" "${DomainName}"
 	put_param "RRKeyWord" "${DomainRR}"
 	put_param "Type" "${DomainType}"
 }
 
-pack_params()
-{
+pack_params() {
 	reset_func_ret
 	local ret=""
 	local key key_enc val val_enc
@@ -152,8 +122,7 @@ pack_params()
 
 # ----- Other utils -----
 
-get_my_ip()
-{
+get_my_ip() {
 	reset_func_ret
 	local my_ip=$(curl ${MyIPEchoUrl} --silent --connect-timeout 10)
 	# local my_ip=$(ipconfig getifaddr en0)
@@ -163,8 +132,7 @@ get_my_ip()
 	_func_ret=${my_ip}
 }
 
-get_domain_ip()
-{
+get_domain_ip() {
 	put_params_public
 	put_params_DescribeDomainRecordInfo
 	send_request
@@ -182,8 +150,7 @@ get_domain_ip()
 }
 
 # @Param1: Raw url to be encoded
-rawurl_encode()
-{
+rawurl_encode() {
 	reset_func_ret
 
 	local string="${1}"
@@ -205,8 +172,7 @@ rawurl_encode()
 	_func_ret="${encoded}"
 }
 
-calc_signature()
-{
+calc_signature() {
 	reset_func_ret
 
 	local sorted_key=$(
@@ -247,8 +213,7 @@ calc_signature()
 	_func_ret=$(/bin/echo -n ${str_to_signed} | openssl dgst -binary -sha1 -hmac ${key_sign} | openssl enc -base64)
 }
 
-send_request()
-{
+send_request() {
 	reset_func_ret
 	# put signature
 	calc_signature
@@ -267,17 +232,7 @@ send_request()
 	_func_ret=${respond}
 }
 
-describe_record()
-{
-	put_params_public
-	put_params_DescribeDomainRecords
-
-	send_request
-}
-
-update_record()
-{
-	# get ip
+update_record() {
 	get_my_ip
 	local my_ip=${_func_ret}
 
@@ -304,19 +259,11 @@ update_record()
 	fi
 }
 
-main()
-{
+main() {
   _log DomainRR: ${DomainRR} DomainName: ${DomainName}
 	_debug AccessKeyId: ${AccessKeyId}
 	_debug AccessKeySec: ${AccessKeySec}
-	#describe_record
 	update_record
 }
 
 main
-#
-# while true
-# do
-#   main
-#   sleep ${CHECK_INTERVAL}
-# done
