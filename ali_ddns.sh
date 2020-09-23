@@ -121,7 +121,12 @@ pack_params() {
 
 get_my_ip() {
   reset_func_ret
-  local my_ip=$(curl ${MyIPEchoUrl} --silent --connect-timeout 10)
+  local my_ip
+  if [ ${INTRANET} ]; then
+    my_ip=$(ip addr | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
+  else
+    my_ip=$(curl ${MyIPEchoUrl} --silent --connect-timeout 10)
+  fi
   # local my_ip=$(ipconfig getifaddr en0)
   # local my_ip=$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
 
